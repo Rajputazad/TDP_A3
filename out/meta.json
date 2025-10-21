@@ -1,0 +1,14 @@
+{
+  "best_threshold": 0.6500000000000001,
+  "val_best_f1": 0.9405405405405406,
+  "test_precision": 0.96875,
+  "test_recall": 0.9393939393939394,
+  "test_f1": 0.9538461538461539,
+  "in_dim": 2005,
+  "bow_dim": 2000,
+  "stat_dim": 5,
+  "epochs": 50,
+  "seed": 7,
+  "csv": "C:\\Users\\guruc\\OneDrive\\Desktop\\TDp\\A3\\dataset\\csic_database.csv",
+  "payload_col": "URL"
+}
