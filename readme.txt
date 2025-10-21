@@ -1,8 +1,7 @@
 """
 xss_detector.py
 
-Train a DGL-free XSS detector using request-level features + optional bag-of-words
-and a small PyTorch MLP. Auto-tunes decision threshold on the validation set.
+Train XSS detector using PyTorch MLP. Auto-tunes decision threshold on the validation set.
 
 Usage (train):
 python xss_detector.py --csv ./dataset/csic_database.csv --out_dir ./out --payload_col URL
