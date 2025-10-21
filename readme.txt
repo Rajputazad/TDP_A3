@@ -2,6 +2,8 @@
 xss_detector.py
 
 Train XSS detector using PyTorch MLP. Auto-tunes decision threshold on the validation set.
+DataSet:
+https://www.kaggle.com/datasets/ispangler/csic-2010-web-application-attacks
 
 Usage (train):
 python xss_detector.py --csv ./dataset/csic_database.csv --out_dir ./out --payload_col URL
