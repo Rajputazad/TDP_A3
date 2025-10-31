@@ -1,4 +1,4 @@
-import argparse, os, json, pickle, re, html, urllib.parse
+import argparse, os, json, pickle, re, html, urllib.parse, time
 import numpy as np
 import torch
 import torch.nn as nn
@@ -9,6 +9,7 @@ p.add_argument("--out_dir", default="./out", help="Folder containing mlp_state.p
 p.add_argument("--text", nargs="*", help="One or more payloads/URLs to score")
 p.add_argument("--file", help="Path to a text file with one payload per line (optional)")
 p.add_argument("--threshold", type=float, default=None, help="Override decision threshold (default: meta.json best_threshold or 0.5)")
+p.add_argument("--single_runs", type=int, default=100, help="Number of single-sample timings to average (default 100)")
 args = p.parse_args()
 
 out_dir = os.path.abspath(args.out_dir)
@@ -92,10 +93,10 @@ class MLP(nn.Module):
             nn.Linear(hid, hid//2), nn.ReLU(),
             nn.Linear(hid//2, 1)
         )
-    def forward(self, x): return self.net(x).squeeze(-1)
+    def forward(self, x): 
+        return self.net(x).squeeze(-1)
 
 model = MLP(in_dim=in_dim, hid=hid)
-# robust load across torch versions
 state = torch.load(state_path, map_location="cpu")
 if isinstance(state, dict) and "state_dict" in state:
     state = state["state_dict"]
@@ -113,17 +114,49 @@ if args.file:
 if not texts:
     raise SystemExit("No input provided. Use --text 'payload here' or --file requests.txt")
 
-# ---------- Predict ----------
-X = torch.tensor(vectorize(texts))
+# ---------- Prepare tensors ----------
+X = torch.tensor(vectorize(texts)).float()
+
+# ---------- Warm-up ----------
+with torch.no_grad():
+    if X.shape[0] > 0:
+        _ = torch.sigmoid(model(X[:1]))
+
+# ---------- Timing: Batch prediction ----------
+start = time.perf_counter()
 with torch.no_grad():
     probs = torch.sigmoid(model(X)).numpy()
+end = time.perf_counter()
 
+total_time = end - start
+avg_time_per_sample = total_time / max(len(texts), 1)
+
+# ---------- Timing: Single-sample predictions ----------
+n_runs = min(args.single_runs, max(1, len(texts)))
+single_times = []
+with torch.no_grad():
+    for i in range(n_runs):
+        single_x = torch.tensor(vectorize([texts[i % len(texts)]])).float()
+        t0 = time.perf_counter()
+        _ = torch.sigmoid(model(single_x)).numpy()
+        t1 = time.perf_counter()
+        single_times.append(t1 - t0)
+
+avg_single_time = float(np.mean(single_times)) if single_times else 0.0
+
+# ---------- Predictions ----------
 thr = float(args.threshold) if args.threshold is not None else best_thr
 preds = (probs >= thr).astype(int)
 
-# ---------- Print (minimal) ----------
-# prob, pred(0/1), text
+# ---------- Print results ----------
 for t, p, y in zip(texts, probs, preds):
-    # trim long texts for console readability
     short = (t[:140] + "...") if len(t) > 140 else t
     print(f"{p:.3f}\t{y}\t{short}")
+
+print("\n--- Timing summary ---")
+print(f"Batch total prediction time : {total_time:.6f} s")
+print(f"Batch avg per sample        : {avg_time_per_sample * 1000:.6f} ms")
+print(f"Single-sample avg (n={n_runs}): {avg_single_time * 1000:.6f} ms")
+
+print("\nNote: Batch inference is faster per sample due to vectorization;")
+print("single-sample timing shows the latency for real-time predictions.")
