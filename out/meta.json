@@ -9,6 +9,6 @@
   "stat_dim": 5,
   "epochs": 50,
   "seed": 7,
-  "csv": "C:\\Users\\guruc\\OneDrive\\Desktop\\TDp\\A3\\dataset\\csic_database.csv",
+  "csv": "C:\\Users\\guruc\\OneDrive\\Desktop\\TDp\\A3\\csic_database.csv",
   "payload_col": "URL"
 }
